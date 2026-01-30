@@ -28,4 +28,4 @@ const patientSchema = new mongoose.Schema({
   registrationDate: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Patient', patientSchema);
+module.exports = mongoose.model('Patients', patientSchema);
