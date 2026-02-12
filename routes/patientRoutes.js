@@ -4,5 +4,8 @@ const patientController = require('../controllers/patientController');
 
 // Define the route: POST http://localhost:3000/api/patients/register
 router.post('/register', patientController.registerPatient);
+router.get('/:patientID', patientController.getPatientById);
+router.get('/', patientController.getAllPatients);
+
 
 module.exports = router;
