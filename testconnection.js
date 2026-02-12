@@ -1,8 +1,8 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 // REPLACE <db_password> with your actual password (no brackets)
-const uri = "mongodb+srv://Test:123456789@hospital.ik2b7h3.mongodb.net/?appName=Hospital";
-
+// const uri = "mongodb+srv://user1:hello123@hospital.ik2b7h3.mongodb.net/?appName=Hospital";
+const uri ="mongodb://user1:hello123@ac-ttcpdut-shard-00-00.ik2b7h3.mongodb.net:27017,ac-ttcpdut-shard-00-01.ik2b7h3.mongodb.net:27017,ac-ttcpdut-shard-00-02.ik2b7h3.mongodb.net:27017/<DB_NAME>?authSource=admin&replicaSet=atlas-7p72fv-shard-0&tls=true&retryWrites=true&w=majority"
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,

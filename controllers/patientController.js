@@ -1,44 +1,121 @@
 const Patient = require('../models/Patient');
 
+// Validate incoming registration payload before database operations.
+function validateRegistration(body) {
+  const errors = [];
+
+  // Required fields for a new patient registration.
+  const required = [
+    'firstName', 'lastName', 'dob', 'gender',
+    'contactNumber', 'entryPoint', 'registeredBy'
+  ];
+
+  // Reject missing or empty required values.
+  for (const field of required) {
+    if (!body[field] || String(body[field]).trim() === '') {
+      errors.push(`${field} is required`);
+    }
+  }
+
+  // Allow only supported gender values.
+  const allowedGenders = ['Male', 'Female', 'Other'];
+  if (body.gender && !allowedGenders.includes(body.gender)) {
+    errors.push('gender must be Male, Female, or Other');
+  }
+
+  // Allow only supported registration entry points.
+  const allowedEntryPoints = ['A&E', 'OPD'];
+  if (body.entryPoint && !allowedEntryPoints.includes(body.entryPoint)) {
+    errors.push('entryPoint must be A&E or OPD');
+  }
+
+  // Ensure DOB is valid and not in the future.
+  if (body.dob) {
+    const dob = new Date(body.dob);
+    if (Number.isNaN(dob.getTime())) errors.push('dob must be a valid date');
+    else if (dob > new Date()) errors.push('dob cannot be in the future');
+  }
+
+  // Basic contact number format check.
+  const phoneRegex = /^[0-9+()\-\s]{7,20}$/;
+  if (body.contactNumber && !phoneRegex.test(body.contactNumber)) {
+    errors.push('contactNumber format is invalid');
+  }
+
+  // Optional fields must be arrays when provided.
+  if (body.knownDiseases && !Array.isArray(body.knownDiseases)) {
+    errors.push('knownDiseases must be an array');
+  }
+
+  if (body.initialComplaints && !Array.isArray(body.initialComplaints)) {
+    errors.push('initialComplaints must be an array');
+  }
+
+  return errors;
+}
+
 // POST /api/patients/register
 exports.registerPatient = async (req, res) => {
   try {
-    // 1. Validate role (Mocking the Auth Middleware for now)
-    // In production, req.user.role would come from the JWT token
-    // if (req.user.role !== 'Clerk') return res.status(403).send("Access Denied");
+    // Validate payload and return all validation issues at once.
+    const errors = validateRegistration(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors
+      });
+    }
 
-    // 2. Extract data from request body
-    const { 
-      firstName, lastName, dob, gender, contactNumber, 
-      entryPoint, knownDiseases, initialComplaints, registeredBy 
+    // Extract validated input fields.
+    const {
+      firstName, lastName, dob, gender, contactNumber,
+      entryPoint, knownDiseases, initialComplaints, registeredBy
     } = req.body;
 
-    // 3. Generate a simple Patient ID (You can make this more complex later)
-    const patientID = 'PAT-' + Date.now(); 
+    // Simple patient identifier generation for current module scope.
+    const patientID = 'PAT-' + Date.now();
 
-    // 4. Create the record
+    // Create patient document instance.
     const newPatient = new Patient({
-      patientID,
-      firstName,
-      lastName,
-      dob,
-      gender,
-      contactNumber,
-      entryPoint,
-      knownDiseases,
-      initialComplaints,
-      registeredBy 
+      patientID, firstName, lastName, dob, gender, contactNumber,
+      entryPoint, knownDiseases, initialComplaints, registeredBy
     });
 
-    // 5. Save to MongoDB
+    // Persist to MongoDB.
     await newPatient.save();
 
-    // 6. Return JSON response [cite: 90]
-    res.status(201).json({ 
-      message: "Patient Registered Successfully", 
-      patient: newPatient 
+    // Return success response in JSON format.
+    res.status(201).json({
+      message: 'Patient Registered Successfully',
+      patient: newPatient
     });
+  } catch (error) {
+    // Fallback for unexpected server/database errors.
+    res.status(500).json({ error: error.message });
+  }
+};
 
+// GET /api/patients/:patientID
+exports.getPatientById = async (req, res) => {
+  try {
+    const { patientID } = req.params;
+    const patient = await Patient.findOne({ patientID });
+
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    res.status(200).json({ patient });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// GET /api/patients
+exports.getAllPatients = async (req, res) => {
+  try {
+    const patients = await Patient.find().sort({ registrationDate: -1 });
+    res.status(200).json({ count: patients.length, patients });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
