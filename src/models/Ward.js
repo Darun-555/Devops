@@ -32,7 +32,7 @@ const WardSchema = new mongoose.Schema(
 
 WardSchema.index({ wardName: 1, department: 1 }, { unique: true });
 
-WardSchema.pre('validate', function (next) {
+WardSchema.pre('validate', function () {
   if (this.availableBeds === undefined || this.availableBeds === null) {
     this.availableBeds = this.totalBeds;
   }
@@ -44,8 +44,6 @@ WardSchema.pre('validate', function (next) {
   if (this.availableBeds < 0) {
     this.invalidate('availableBeds', 'availableBeds cannot be negative');
   }
-
-  next();
 });
 
 module.exports = mongoose.model('Ward', WardSchema);
