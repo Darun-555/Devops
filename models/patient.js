@@ -1,4 +1,29 @@
 const mongoose = require('mongoose');
+// Clinical referrals added after initial registration.
+const referralSchema = new mongoose.Schema(
+  {
+    service: {
+      type: String,
+      required: true,
+      trim: true,
+      enum: [
+        'Radiology',
+        'Pathology',
+        'BloodBank',
+        'Physiotherapy',
+        'OperationTheatre',
+        'ICU',
+        'CCU',
+        'Ward'
+      ]
+    },
+    reason: { type: String, required: true, trim: true, maxlength: 300 },
+    referredBy: { type: String, required: true, trim: true, maxlength: 80 },
+    notes: { type: String, trim: true, maxlength: 500 },
+    referredAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
 
 const patientSchema = new mongoose.Schema({
   // Unique ID for the hospital system
@@ -58,29 +83,4 @@ const patientSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Clinical referrals added after initial registration.
-const referralSchema = new mongoose.Schema(
-  {
-    service: {
-      type: String,
-      required: true,
-      trim: true,
-      enum: [
-        'Radiology',
-        'Pathology',
-        'BloodBank',
-        'Physiotherapy',
-        'OperationTheatre',
-        'ICU',
-        'CCU',
-        'Ward'
-      ]
-    },
-    reason: { type: String, required: true, trim: true, maxlength: 300 },
-    referredBy: { type: String, required: true, trim: true, maxlength: 80 },
-    notes: { type: String, trim: true, maxlength: 500 },
-    referredAt: { type: Date, default: Date.now }
-  },
-  { _id: false }
-);
 module.exports = mongoose.model('Patients', patientSchema);
