@@ -7,7 +7,7 @@ function validateRegistration(body) {
   // Required fields for a new patient registration.
   const required = [
     'firstName', 'lastName', 'dob', 'gender',
-    'contactNumber', 'entryPoint', 'registeredBy'
+    'contactNumber', 'entryPoint', 'registeredBy','servicePoint'
   ];
 
   // Reject missing or empty required values.
@@ -16,6 +16,16 @@ function validateRegistration(body) {
       errors.push(`${field} is required`);
     }
   }
+
+  const allowedServicePoints = ['Radiology','Pathology','BloodBank','Physiotherapy',
+  'OperationTheatre','ICU','CCU','Ward'
+  ];
+
+  if (body.servicePoint && !allowedServicePoints.includes(body.servicePoint)) {
+    errors.push('servicePoint is invalid');
+  }
+
+
 
   // Allow only supported gender values.
   const allowedGenders = ['Male', 'Female', 'Other'];
@@ -69,7 +79,7 @@ exports.registerPatient = async (req, res) => {
     // Extract validated input fields.
     const {
       firstName, lastName, dob, gender, contactNumber,
-      entryPoint, knownDiseases, initialComplaints, registeredBy
+      entryPoint, knownDiseases, initialComplaints, registeredBy, servicePoint
     } = req.body;
 
     // Simple patient identifier generation for current module scope.
@@ -78,7 +88,7 @@ exports.registerPatient = async (req, res) => {
     // Create patient document instance.
     const newPatient = new Patient({
       patientID, firstName, lastName, dob, gender, contactNumber,
-      entryPoint, knownDiseases, initialComplaints, registeredBy
+      entryPoint, knownDiseases, initialComplaints, registeredBy, servicePoint
     });
 
     // Persist to MongoDB.
