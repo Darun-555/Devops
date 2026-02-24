@@ -1,4 +1,4 @@
-const Patient = require('../models/Patient');
+const Patient = require('../Models/patient');
 
 // Validate incoming registration payload before database operations.
 function validateRegistration(body) {
@@ -83,7 +83,9 @@ exports.registerPatient = async (req, res) => {
     } = req.body;
 
     // Simple patient identifier generation for current module scope.
-    const patientID = 'PAT-' + Date.now();
+    // const patientID = 'PAT-' + Date.now();
+    const { v4: uuidv4 } = require('uuid');
+    const patientID = `PAT-${new Date().getFullYear()}-${uuidv4().split('-')[0].toUpperCase()}`;
 
     // Create patient document instance.
     const newPatient = new Patient({
@@ -102,6 +104,92 @@ exports.registerPatient = async (req, res) => {
   } catch (error) {
     // Fallback for unexpected server/database errors.
     res.status(500).json({ error: error.message });
+  }
+};
+
+// PATCH /api/patients/:patientID/diseases
+exports.appendAdditionalDiseases = async (req, res) => {
+  try {
+    const { patientID } = req.params;
+    const { diseases } = req.body;
+
+    if (!Array.isArray(diseases) || diseases.length === 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: ['diseases must be a non-empty array of strings']
+      });
+    }
+    const cleaned = diseases
+      .map(d => (typeof d === 'string' ? d.trim() : ''))
+      .filter(Boolean);
+
+    if (cleaned.length === 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: ['diseases array contains no valid strings']
+      });
+    }
+    const patient = await Patient.findOne({ patientID });
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+    const existing = new Set((patient.additionalDiseases || []).map(x => String(x).toLowerCase()));
+    const toAdd = cleaned.filter(x => !existing.has(x.toLowerCase()));
+
+    patient.additionalDiseases = [...(patient.additionalDiseases || []), ...toAdd];
+    await patient.save();
+
+    return res.status(200).json({
+      message: 'Additional diseases updated',
+      added: toAdd,
+      patient
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// POST /api/patients/:patientID/referrals
+exports.addReferralDetails = async (req, res) => {
+  try {
+    const { patientID } = req.params;
+    const { service, reason, referredBy, notes } = req.body;
+
+    const errors = [];
+    const allowedServices = [
+      'Radiology','Pathology','BloodBank','Physiotherapy',
+      'OperationTheatre','ICU','CCU','Ward'
+    ];
+
+    if (!service || !allowedServices.includes(service)) errors.push('service is invalid');
+    if (!reason || String(reason).trim() === '') errors.push('reason is required');
+    if (!referredBy || String(referredBy).trim() === '') errors.push('referredBy is required');
+    if (notes && String(notes).length > 500) errors.push('notes must be <= 500 characters');
+
+    if (errors.length > 0) {
+      return res.status(400).json({ error: 'Validation failed', details: errors });
+    }
+
+    const patient = await Patient.findOne({ patientID });
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+    const referral = {
+      service,
+      reason: String(reason).trim(),
+      referredBy: String(referredBy).trim(),
+      notes: notes ? String(notes).trim() : undefined,
+      referredAt: new Date()
+    };
+
+    patient.referralDetails = [...(patient.referralDetails || []), referral];
+    await patient.save();
+
+    return res.status(201).json({
+      message: 'Referral added successfully',
+      referral,
+      patient
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
