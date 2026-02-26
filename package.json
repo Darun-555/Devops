@@ -1,19 +1,26 @@
 {
+  "name": "devops",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Darun-555/Devops.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Darun-555/Devops/issues"
+  },
+  "homepage": "https://github.com/Darun-555/Devops#readme",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
+    "joi": "^18.0.2",
     "mongoose": "^9.2.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.11"
-  },
-  "scripts": {
-  "start": "node server.js",
-    "seed": "node src/seedAdmin.js",
-  "dev": "nodemon server.js"
-}
-
+  }
 }
