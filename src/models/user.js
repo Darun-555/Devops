@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
         "doctor",
         "nurse",
         "paramedic",
-        "techical_staff",
+        "technical_staff",
       ],
       required: true,
     },
