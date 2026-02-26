@@ -1,23 +1,31 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
+require('dotenv').config();
 
-// REPLACE <db_password> with your actual password (no brackets)
-// const uri = "mongodb+srv://user1:hello123@hospital.ik2b7h3.mongodb.net/?appName=Hospital";
-const uri ="mongodb+srv://devopsUser:devopsUser12@cluster0.z2iaflf.mongodb.net/testdb?retryWrites=true&w=majority&appName=Cluster0";
+const uri = process.env.MONGO_URI;
+
+if (!uri) {
+  throw new Error('MONGO_URI is missing. Add it to .env before testing connection.');
+}
+
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
-    deprecationErrors: true,
+    deprecationErrors: true
   }
 });
 
 async function run() {
   try {
     await client.connect();
-    await client.db("testdb").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    await client.db().command({ ping: 1 });
+    console.log('MongoDB ping successful');
   } finally {
     await client.close();
   }
 }
-run().catch(console.dir);
+
+run().catch((error) => {
+  console.error('MongoDB ping failed:', error.message);
+  process.exit(1);
+});

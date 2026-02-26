@@ -24,6 +24,7 @@ router.post(
 
 router.get(
   '/:id',
+  requireRole('doctor', 'nurse', 'paramedic', 'admin'),
   validateRequest(admissionIdParamSchema, 'params'),
   asyncHandler(admissionController.getAdmissionById)
 );
@@ -59,6 +60,7 @@ router.put(
 
 router.get(
   '/patient/:patientId',
+  requireRole('doctor', 'nurse', 'paramedic', 'admin'),
   validateRequest(patientIdParamSchema, 'params'),
   asyncHandler(admissionController.getPatientAdmissions)
 );

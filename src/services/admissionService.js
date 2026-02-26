@@ -4,6 +4,8 @@ const Ward = require('../models/Ward');
 const VitalRecord = require('../models/VitalRecord');
 const MedicationRecord = require('../models/MedicationRecord');
 const DoctorNote = require('../models/DoctorNote');
+require('../models/Patient');
+require('../models/user');
 const AppError = require('../utils/AppError');
 
 const admitPatient = async ({ patientId, wardId, admittedBy }) => {
@@ -51,7 +53,7 @@ const getAdmissionById = async (admissionId) => {
   const admission = await Admission.findById(admissionId)
     .populate('wardId')
     .populate('patientId')
-    .populate('admittedBy', 'name role');
+    .populate('admittedBy', 'fullName role');
 
   if (!admission) {
     throw new AppError('Admission not found', 404);
