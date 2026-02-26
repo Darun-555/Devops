@@ -59,7 +59,7 @@ router.put(
 );
 
 router.get(
-  '/patient/:patientId',
+  '/patient/:patientID',
   requireRole('doctor', 'nurse', 'paramedic', 'admin'),
   validateRequest(patientIdParamSchema, 'params'),
   asyncHandler(admissionController.getPatientAdmissions)

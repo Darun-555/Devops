@@ -2,7 +2,7 @@ const admissionService = require('../services/admissionService');
 
 const admitPatient = async (req, res) => {
   const admission = await admissionService.admitPatient({
-    patientId: req.body.patientId,
+    patientID: req.body.patientID,
     wardId: req.body.wardId,
     admittedBy: req.user.id
   });
@@ -25,7 +25,7 @@ const getAdmissionById = async (req, res) => {
 };
 
 const getPatientAdmissions = async (req, res) => {
-  const admissions = await admissionService.getPatientAdmissions(req.params.patientId);
+  const admissions = await admissionService.getPatientAdmissions(req.params.patientID);
 
   return res.status(200).json({
     success: true,
@@ -37,7 +37,7 @@ const getPatientAdmissions = async (req, res) => {
 const recordVitals = async (req, res) => {
   const record = await admissionService.recordVitals({
     admissionId: req.body.admissionId,
-    patientId: req.body.patientId,
+    patientID: req.body.patientID,
     temperature: req.body.temperature,
     bloodPressure: req.body.bloodPressure,
     pulseRate: req.body.pulseRate,
@@ -54,7 +54,7 @@ const recordVitals = async (req, res) => {
 const recordMedication = async (req, res) => {
   const record = await admissionService.recordMedication({
     admissionId: req.body.admissionId,
-    patientId: req.body.patientId,
+    patientID: req.body.patientID,
     medicineGiven: req.body.medicineGiven,
     intakeAmount: req.body.intakeAmount,
     outputAmount: req.body.outputAmount,
@@ -71,7 +71,7 @@ const recordMedication = async (req, res) => {
 const addDoctorNote = async (req, res) => {
   const note = await admissionService.addDoctorNote({
     admissionId: req.body.admissionId,
-    patientId: req.body.patientId,
+    patientID: req.body.patientID,
     diagnosis: req.body.diagnosis,
     treatment: req.body.treatment,
     prescription: req.body.prescription,
