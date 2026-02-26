@@ -1,10 +1,14 @@
 {
   "name": "devops",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Hospital backend",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed:admin": "node src/seedAdmin.js",
+    "db:ping": "node src/test_connection.js",
+    "test": "echo \"No tests configured\""
   },
   "repository": {
     "type": "git",
@@ -18,9 +22,16 @@
   },
   "homepage": "https://github.com/Darun-555/Devops#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "joi": "^18.0.2",
-    "mongoose": "^9.2.1"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.2.1",
+    "mongodb": "^6.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

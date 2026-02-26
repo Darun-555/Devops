@@ -14,6 +14,10 @@ router.post(
   asyncHandler(wardController.createWard)
 );
 
-router.get('/', asyncHandler(wardController.listWards));
+router.get(
+  '/',
+  requireRole('admin', 'doctor', 'nurse', 'paramedic'),
+  asyncHandler(wardController.listWards)
+);
 
 module.exports = router;
