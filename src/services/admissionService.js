@@ -1,14 +1,30 @@
 const mongoose = require('mongoose');
 const Admission = require('../models/Admission');
 const Ward = require('../models/Ward');
+const Patient = require('../models/Patient');
 const VitalRecord = require('../models/VitalRecord');
 const MedicationRecord = require('../models/MedicationRecord');
 const DoctorNote = require('../models/DoctorNote');
-require('../models/Patient');
 require('../models/user');
 const AppError = require('../utils/AppError');
 
-const admitPatient = async ({ patientId, wardId, admittedBy }) => {
+const resolvePatientObjectId = async (patientID, session = null) => {
+  const query = Patient.findOne({ patientID }).select('_id');
+
+  if (session) {
+    query.session(session);
+  }
+
+  const patient = await query;
+
+  if (!patient) {
+    throw new AppError('Patient not found', 404);
+  }
+
+  return patient._id;
+};
+
+const admitPatient = async ({ patientID, wardId, admittedBy }) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -22,8 +38,10 @@ const admitPatient = async ({ patientId, wardId, admittedBy }) => {
       throw new AppError('No available beds in ward', 409);
     }
 
+    const patientObjectId = await resolvePatientObjectId(patientID, session);
+
     const existingAdmission = await Admission.findOne({
-      patientId,
+      patientId: patientObjectId,
       status: 'admitted'
     }).session(session);
 
@@ -32,7 +50,7 @@ const admitPatient = async ({ patientId, wardId, admittedBy }) => {
     }
 
     const [admission] = await Admission.create(
-      [{ patientId, wardId, admittedBy }],
+      [{ patientId: patientObjectId, wardId, admittedBy }],
       { session }
     );
 
@@ -62,15 +80,17 @@ const getAdmissionById = async (admissionId) => {
   return admission;
 };
 
-const getPatientAdmissions = async (patientId) => {
-  const admissions = await Admission.find({ patientId })
+const getPatientAdmissions = async (patientID) => {
+  const patientObjectId = await resolvePatientObjectId(patientID);
+
+  const admissions = await Admission.find({ patientId: patientObjectId })
     .populate('wardId')
     .sort({ admissionDate: -1 });
 
   return admissions;
 };
 
-const ensureActiveAdmission = async (admissionId, patientId) => {
+const ensureActiveAdmission = async (admissionId, patientObjectId) => {
   const admission = await Admission.findById(admissionId);
 
   if (!admission) {
@@ -81,7 +101,7 @@ const ensureActiveAdmission = async (admissionId, patientId) => {
     throw new AppError('Admission is not active', 409);
   }
 
-  if (patientId && admission.patientId.toString() !== patientId) {
+  if (patientObjectId && admission.patientId.toString() !== patientObjectId.toString()) {
     throw new AppError('Patient does not match admission', 400);
   }
 
@@ -89,23 +109,51 @@ const ensureActiveAdmission = async (admissionId, patientId) => {
 };
 
 const recordVitals = async (payload) => {
-  await ensureActiveAdmission(payload.admissionId, payload.patientId);
+  const patientObjectId = await resolvePatientObjectId(payload.patientID);
+  await ensureActiveAdmission(payload.admissionId, patientObjectId);
 
-  const record = await VitalRecord.create(payload);
+  const record = await VitalRecord.create({
+    admissionId: payload.admissionId,
+    patientId: patientObjectId,
+    temperature: payload.temperature,
+    bloodPressure: payload.bloodPressure,
+    pulseRate: payload.pulseRate,
+    recordedBy: payload.recordedBy
+  });
+
   return record;
 };
 
 const recordMedication = async (payload) => {
-  await ensureActiveAdmission(payload.admissionId, payload.patientId);
+  const patientObjectId = await resolvePatientObjectId(payload.patientID);
+  await ensureActiveAdmission(payload.admissionId, patientObjectId);
 
-  const record = await MedicationRecord.create(payload);
+  const record = await MedicationRecord.create({
+    admissionId: payload.admissionId,
+    patientId: patientObjectId,
+    medicineGiven: payload.medicineGiven,
+    intakeAmount: payload.intakeAmount,
+    outputAmount: payload.outputAmount,
+    recordedBy: payload.recordedBy
+  });
+
   return record;
 };
 
 const addDoctorNote = async (payload) => {
-  await ensureActiveAdmission(payload.admissionId, payload.patientId);
+  const patientObjectId = await resolvePatientObjectId(payload.patientID);
+  await ensureActiveAdmission(payload.admissionId, patientObjectId);
 
-  const note = await DoctorNote.create(payload);
+  const note = await DoctorNote.create({
+    admissionId: payload.admissionId,
+    patientId: patientObjectId,
+    diagnosis: payload.diagnosis,
+    treatment: payload.treatment,
+    prescription: payload.prescription,
+    progressNotes: payload.progressNotes,
+    createdBy: payload.createdBy
+  });
+
   return note;
 };
 
