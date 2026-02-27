@@ -23,6 +23,12 @@ router.post(
 );
 
 router.get(
+  '/',
+  requireRole('admin'),
+  asyncHandler(admissionController.listAllAdmissions)
+);
+
+router.get(
   '/:id',
   requireRole('doctor', 'nurse', 'paramedic', 'admin'),
   validateRequest(admissionIdParamSchema, 'params'),

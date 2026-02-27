@@ -24,6 +24,16 @@ const getAdmissionById = async (req, res) => {
   });
 };
 
+const listAllAdmissions = async (req, res) => {
+  const admissions = await admissionService.listAllAdmissions();
+
+  return res.status(200).json({
+    success: true,
+    message: 'All admissions retrieved successfully',
+    data: admissions
+  });
+};
+
 const getPatientAdmissions = async (req, res) => {
   const admissions = await admissionService.getPatientAdmissions(req.params.patientID);
 
@@ -103,6 +113,7 @@ module.exports = {
   admitPatient,
   getAdmissionById,
   getPatientAdmissions,
+  listAllAdmissions,
   recordVitals,
   recordMedication,
   addDoctorNote,

@@ -90,6 +90,16 @@ const getPatientAdmissions = async (patientID) => {
   return admissions;
 };
 
+const listAllAdmissions = async () => {
+  const admissions = await Admission.find()
+    .populate('wardId')
+    .populate('patientId')
+    .populate('admittedBy', 'fullName role')
+    .sort({ admissionDate: -1 });
+
+  return admissions;
+};
+
 const ensureActiveAdmission = async (admissionId, patientObjectId) => {
   const admission = await Admission.findById(admissionId);
 
@@ -198,6 +208,7 @@ module.exports = {
   admitPatient,
   getAdmissionById,
   getPatientAdmissions,
+  listAllAdmissions,
   recordVitals,
   recordMedication,
   addDoctorNote,
