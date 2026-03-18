@@ -29,10 +29,12 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'MONGO_URI', variable: 'MONGO_URI'),
                     string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET')
+                    string(credentialsId: 'JWT_EXPIRE', variable: 'JWT_EXPIRE')
                 ]) {
                     sh '''
                         echo "MONGO_URI=${MONGO_URI}" > .env
                         echo "JWT_SECRET=${JWT_SECRET}" >> .env
+                        echo "JWT_EXPIRE=${JWT_EXPIRE}" >> .env
                         npm test
                     '''
                 }
