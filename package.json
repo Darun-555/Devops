@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "seed:admin": "node src/seedAdmin.js",
     "db:ping": "node src/test_connection.js",
-    "test": "echo \"No tests configured\""
+    "test": "mocha tests/setup.js tests/**/*_test.js --timeout 10000 --exit"
   },
   "repository": {
     "type": "git",
@@ -28,10 +28,13 @@
     "express": "^5.2.1",
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^9.2.1",
-    "mongodb": "^6.20.0"
+    "mongodb": "^6.20.0",
+    "mongoose": "^9.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   }
 }
