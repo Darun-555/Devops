@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS25.8.1'
+    }
+
     environment {
         IMAGE_NAME = 'hospital-system-app'
     }
