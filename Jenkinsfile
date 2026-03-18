@@ -28,7 +28,7 @@ pipeline {
             steps {
                 withCredentials([
                     string(credentialsId: 'MONGO_URI', variable: 'MONGO_URI'),
-                    string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET')
+                    string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET'),
                     string(credentialsId: 'JWT_EXPIRE', variable: 'JWT_EXPIRE')
                 ]) {
                     sh '''
