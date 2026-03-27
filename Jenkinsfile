@@ -55,13 +55,21 @@ pipeline {
 
         stage('Deploy Container') {
             steps {
-                sh '''
-                    docker stop ${IMAGE_NAME} || true
-                    docker rm ${IMAGE_NAME} || true
-                    docker run -d -p 3000:3000 \
-                        --name ${IMAGE_NAME} \
-                        ${IMAGE_NAME}
-                '''
+                 withCredentials([
+                    string(credentialsId: 'MONGO_URI', variable: 'MONGO_URI'),
+                    string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET'),
+                    string(credentialsId: 'JWT_EXPIRE', variable: 'JWT_EXPIRE')
+                ]) {
+                    sh '''
+                        docker stop ${IMAGE_NAME} || true
+                        docker rm ${IMAGE_NAME} || true
+                        docker run -d -p 3000:3000 \
+                            --name ${IMAGE_NAME} \
+                            -e MONGO_URI="${MONGO_URI}" \
+                            -e JWT_SECRET="${JWT_SECRET}" \
+                            -e JWT_EXPIRE="${JWT_EXPIRE}" \
+                            ${IMAGE_NAME}
+                    '''
             }
         }
     }
