@@ -5,5 +5,5 @@ metadata:
   namespace: default
 data:
   monitored_url: "http://host.docker.internal:30000/health"
-  nagios_xi_url: "http://localhost:8080"
+  nagios_xi_url: "http://localhost:8090"
   check_interval: "1m"

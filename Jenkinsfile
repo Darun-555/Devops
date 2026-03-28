@@ -7,9 +7,11 @@ pipeline {
 
     environment {
         IMAGE_NAME      = 'hospital-system-app'
+        K8S_SERVICE_NAME = 'hospital-system-app-service'
         CONTAINER_PORT  = '3000'
         HOST_PORT       = '3000'
         K8S_PORT        = '30000'
+        PORT_FORWARD_PORT = '18080'
         K8S_NAMESPACE   = 'default'
         NAGIOS_URL      = 'http://localhost:8090'
         ZAP_REPORT_DIR  = "${WORKSPACE}/zap-reports"
@@ -98,16 +100,32 @@ pipeline {
          stage('Health Check') {
             steps {
                 sh '''
+                    set -e
                     echo "Waiting for Kubernetes pods to be ready..."
-                    sleep 20
+                    kubectl wait --for=condition=ready pod -l app=${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=120s
+
+                    kubectl port-forward --address 127.0.0.1 \
+                        service/${K8S_SERVICE_NAME} \
+                        ${PORT_FORWARD_PORT}:${CONTAINER_PORT} \
+                        -n ${K8S_NAMESPACE} > port-forward.log 2>&1 &
+                    PF_PID=$!
+
+                    cleanup() {
+                        kill ${PF_PID} >/dev/null 2>&1 || true
+                        wait ${PF_PID} >/dev/null 2>&1 || true
+                    }
+
+                    trap cleanup EXIT
+                    sleep 5
                     RETRIES=5
                     COUNT=0
-                    until curl -sf http://localhost:${K8S_PORT}/health; do
+                    until curl -sf http://127.0.0.1:${PORT_FORWARD_PORT}/health; do
                         COUNT=$((COUNT+1))
                         if [ $COUNT -ge $RETRIES ]; then
                             echo "Health check failed after ${RETRIES} attempts"
                             kubectl get pods -n ${K8S_NAMESPACE}
                             kubectl describe deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE}
+                            cat port-forward.log || true
                             exit 1
                         fi
                         echo "Retrying ($COUNT/$RETRIES)..."
@@ -122,14 +140,35 @@ pipeline {
         stage('DAST - OWASP ZAP Scan') {
             steps {
                 sh '''
+                    set -e
                     mkdir -p ${ZAP_REPORT_DIR}
 
+                    kubectl port-forward --address 127.0.0.1 \
+                        service/${K8S_SERVICE_NAME} \
+                        ${PORT_FORWARD_PORT}:${CONTAINER_PORT} \
+                        -n ${K8S_NAMESPACE} > zap-port-forward.log 2>&1 &
+                    PF_PID=$!
+
+                    cleanup() {
+                        kill ${PF_PID} >/dev/null 2>&1 || true
+                        wait ${PF_PID} >/dev/null 2>&1 || true
+                    }
+
+                    trap cleanup EXIT
+                    sleep 5
+
+                    if [ -f /.dockerenv ]; then
+                        ZAP_NETWORK="container:$(hostname)"
+                    else
+                        ZAP_NETWORK="host"
+                    fi
+
                     docker run --rm \
-                        --network host \
+                        --network ${ZAP_NETWORK} \
                         -v ${ZAP_REPORT_DIR}:/zap/wrk/:rw \
                         ghcr.io/zaproxy/zaproxy:stable \
                         zap-baseline.py \
-                        -t http://localhost:${K8S_PORT} \
+                        -t http://127.0.0.1:${PORT_FORWARD_PORT} \
                         -r zap_report.html \
                         -J zap_report.json \
                         -I

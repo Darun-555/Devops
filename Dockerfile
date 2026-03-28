@@ -1,5 +1,5 @@
 # Step 1: Choose base image
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Step 2: Add metadata
 LABEL maintainer="Darun-555"
@@ -7,11 +7,14 @@ LABEL maintainer="Darun-555"
 # Step 3: Set working directory inside container
 WORKDIR /app
 
+# Step 3.1: Install curl for the container health check
+RUN apk add --no-cache curl
+
 # Step 4: Copy dependency files first (enables layer caching)
 COPY package*.json ./
 
 # Step 5: Install only production dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Step 6: Copy the rest of your source code
 COPY . .
