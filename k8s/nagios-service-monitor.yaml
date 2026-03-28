@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nagios-monitor-info
+  namespace: default
+data:
+  monitored_url: "http://host.docker.internal:30000/health"
+  nagios_xi_url: "http://localhost:8080"
+  check_interval: "1m"

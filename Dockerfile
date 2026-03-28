@@ -22,8 +22,12 @@ COPY .env.example .env.example
 # Step 8: Expose the port your server listens on
 EXPOSE 3000
 
-# Step 9: Run as non-root user for security
+# Step 9:Health check so Docker itself knows container status
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Step 10: Run as non-root user for security
 USER node
 
-# Step 10: Start the server
+# Step 11: Start the server
 CMD ["node", "server.js"]

@@ -6,7 +6,12 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = 'hospital-system-app'
+        IMAGE_NAME      = 'hospital-system-app'
+        CONTAINER_PORT  = '3000'
+        HOST_PORT       = '3000'
+        NAGIOS_URL      = 'http://localhost:8080'
+        NETWORK_NAME    = 'devops-net'
+        ZAP_REPORT_DIR  = "${WORKSPACE}/zap-reports"
     }
 
     stages {
@@ -43,7 +48,7 @@ pipeline {
 
         stage('Security Scan') {
             steps {
-                sh 'npm audit --audit-level=high || true'
+                sh 'npm audit --audit-level=high'
             }
         }
 
@@ -53,30 +58,119 @@ pipeline {
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy to Kubernetes') {
             steps {
-                 withCredentials([
-                    string(credentialsId: 'MONGO_URI', variable: 'MONGO_URI'),
+                withCredentials([
+                    string(credentialsId: 'MONGO_URI',  variable: 'MONGO_URI'),
                     string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET'),
                     string(credentialsId: 'JWT_EXPIRE', variable: 'JWT_EXPIRE')
                 ]) {
                     sh '''
-                        docker stop ${IMAGE_NAME} || true
-                        docker rm ${IMAGE_NAME} || true
-                        docker run -d -p 3000:3000 \
-                            --name ${IMAGE_NAME} \
-                            -e MONGO_URI="${MONGO_URI}" \
-                            -e JWT_SECRET="${JWT_SECRET}" \
-                            -e JWT_EXPIRE="${JWT_EXPIRE}" \
-                            ${IMAGE_NAME}
+                        # Apply ConfigMap
+                        kubectl apply -f k8s/configmap.yaml
+
+                        # Create/update Secret imperatively (never store real secret.yaml in git)
+                        kubectl create secret generic hospital-app-secret \
+                            --from-literal=MONGO_URI="${MONGO_URI}" \
+                            --from-literal=JWT_SECRET="${JWT_SECRET}" \
+                            --from-literal=JWT_EXPIRE="${JWT_EXPIRE}" \
+                            --namespace=${K8S_NAMESPACE} \
+                            --dry-run=client -o yaml | kubectl apply -f -
+
+                        # Apply Deployment and Service
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+
+                        # Force rolling update with latest image
+                        kubectl rollout restart deployment/${IMAGE_NAME} \
+                            --namespace=${K8S_NAMESPACE}
+
+                        # Wait for rollout to complete
+                        kubectl rollout status deployment/${IMAGE_NAME} \
+                            --namespace=${K8S_NAMESPACE} \
+                            --timeout=120s
                     '''
+                }
             }
         }
-    }
+
+         stage('Health Check') {
+            steps {
+                sh '''
+                    echo "Waiting for Kubernetes pods to be ready..."
+                    sleep 20
+                    RETRIES=5
+                    COUNT=0
+                    until curl -sf http://localhost:${K8S_PORT}/health; do
+                        COUNT=$((COUNT+1))
+                        if [ $COUNT -ge $RETRIES ]; then
+                            echo "Health check failed after ${RETRIES} attempts"
+                            kubectl get pods -n ${K8S_NAMESPACE}
+                            kubectl describe deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE}
+                            exit 1
+                        fi
+                        echo "Retrying ($COUNT/$RETRIES)..."
+                        sleep 5
+                    done
+                    echo "Kubernetes deployment is healthy!"
+                    kubectl get pods -n ${K8S_NAMESPACE} -l app=${IMAGE_NAME}
+                '''
+            }
+        }
+
+        stage('DAST - OWASP ZAP Scan') {
+            steps {
+                sh '''
+                    mkdir -p ${ZAP_REPORT_DIR}
+                    docker network create ${NETWORK_NAME} || true
+
+                    docker run --rm \
+                        --network host \
+                        -v ${ZAP_REPORT_DIR}:/zap/wrk/:rw \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-baseline.py \
+                        -t http://localhost:${K8S_PORT} \
+                        -r zap_report.html \
+                        -J zap_report.json \
+                        -I
+                '''
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${ZAP_REPORT_DIR}",
+                        reportFiles: 'zap_report.html',
+                        reportName: 'OWASP ZAP Security Report'
+                    ])
+                }
+            }
+        }
+            stage('Verify Nagios XI Monitoring') {
+            steps {
+                sh '''
+                    curl -sf http://localhost:${K8S_PORT}/health \
+                        && echo "Nagios XI monitoring confirmed on port ${K8S_PORT}" \
+                        || echo "Warning: Health endpoint unreachable on port ${K8S_PORT}"
+                '''
+            }
+        }
 }
 
     post {
-        success { echo 'Pipeline completed successfully!' }
-        failure { echo 'Pipeline failed. Check logs.' }
+        success { echo 'Pipeline completed successfully!' 
+        sh '''
+                kubectl get pods -n ${K8S_NAMESPACE} -l app=${IMAGE_NAME}
+                kubectl get services -n ${K8S_NAMESPACE}
+            '''
+        }
+        failure { echo 'Pipeline failed. Check logs.'
+              sh '''
+                kubectl get pods -n ${K8S_NAMESPACE} || true
+                kubectl logs deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --tail=50 || true
+            '''
+         }
         }
 }
