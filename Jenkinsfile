@@ -9,7 +9,9 @@ pipeline {
         IMAGE_NAME      = 'hospital-system-app'
         CONTAINER_PORT  = '3000'
         HOST_PORT       = '3000'
-        NAGIOS_URL      = 'http://localhost:8080'
+        K8S_PORT        = '30000'
+        K8S_NAMESPACE   = 'default'
+        NAGIOS_URL      = 'http://localhost:8090'
         NETWORK_NAME    = 'devops-net'
         ZAP_REPORT_DIR  = "${WORKSPACE}/zap-reports"
     }
@@ -148,29 +150,37 @@ pipeline {
                 }
             }
         }
-            stage('Verify Nagios XI Monitoring') {
+            stage('Verify Nagios Monitoring') {
             steps {
                 sh '''
-                    curl -sf http://localhost:${K8S_PORT}/health \
-                        && echo "Nagios XI monitoring confirmed on port ${K8S_PORT}" \
-                        || echo "Warning: Health endpoint unreachable on port ${K8S_PORT}"
+                    echo "Checking Nagios is reachable at ${NAGIOS_URL}..."
+                    if curl -sf --max-time 10 ${NAGIOS_URL}/nagios/ > /dev/null; then
+                        echo "Nagios is UP and reachable at ${NAGIOS_URL}"
+                    else
+                        echo "WARNING: Nagios is NOT reachable at ${NAGIOS_URL}. Start your Nagios Docker container."
+                        exit 1
+                    fi
                 '''
             }
         }
-}
+
+    }
 
     post {
-        success { echo 'Pipeline completed successfully!' 
-        sh '''
+        success { 
+            echo 'Pipeline completed successfully!' 
+            sh '''
                 kubectl get pods -n ${K8S_NAMESPACE} -l app=${IMAGE_NAME}
                 kubectl get services -n ${K8S_NAMESPACE}
             '''
         }
-        failure { echo 'Pipeline failed. Check logs.'
-              sh '''
+
+        failure { 
+            echo 'Pipeline failed. Check logs.'
+            sh '''
                 kubectl get pods -n ${K8S_NAMESPACE} || true
                 kubectl logs deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --tail=50 || true
             '''
-         }
         }
+    }
 }
