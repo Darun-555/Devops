@@ -197,6 +197,8 @@ pipeline {
                         -r zap_report.html \
                         -J zap_report.json \
                         -I
+
+                    chmod -R 0777 "${ZAP_REPORT_DIR}" || true
                 '''
             }
             post {
@@ -205,7 +207,7 @@ pipeline {
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
-                        reportDir: "${ZAP_REPORT_DIR}",
+                        reportDir: 'zap-reports',
                         reportFiles: 'zap_report.html',
                         reportName: 'OWASP ZAP Security Report'
                     ])
@@ -215,11 +217,16 @@ pipeline {
             stage('Verify Nagios Monitoring') {
             steps {
                 sh '''
-                    echo "Checking Nagios is reachable at ${NAGIOS_URL}..."
-                    if curl -sf --max-time 10 ${NAGIOS_URL}/nagiosxi/ > /dev/null; then
-                        echo "Nagios is UP and reachable at ${NAGIOS_URL}"
+                    set -e
+                    NAGIOS_CHECK_URL="${NAGIOS_URL}"
+
+                    echo "Checking Nagios is reachable at ${NAGIOS_CHECK_URL}..."
+                    if curl -sf --max-time 10 "${NAGIOS_CHECK_URL}/nagiosxi/" > /dev/null; then
+                        echo "Nagios is UP and reachable at ${NAGIOS_CHECK_URL}"
+                    elif [ -f /.dockerenv ] && curl -sf --max-time 10 "http://host.docker.internal:8090/nagiosxi/" > /dev/null; then
+                        echo "Nagios is UP and reachable at http://host.docker.internal:8090"
                     else
-                        echo "WARNING: Nagios is NOT reachable at ${NAGIOS_URL}. Start your Nagios Docker container."
+                        echo "WARNING: Nagios is NOT reachable at ${NAGIOS_CHECK_URL} or http://host.docker.internal:8090. Ensure container tgoetheyn/docker-nagiosxi:latest is running and port 8090 is published."
                         exit 1
                     fi
                 '''
