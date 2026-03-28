@@ -12,7 +12,6 @@ pipeline {
         K8S_PORT        = '30000'
         K8S_NAMESPACE   = 'default'
         NAGIOS_URL      = 'http://localhost:8090'
-        NETWORK_NAME    = 'devops-net'
         ZAP_REPORT_DIR  = "${WORKSPACE}/zap-reports"
     }
 
@@ -124,7 +123,6 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p ${ZAP_REPORT_DIR}
-                    docker network create ${NETWORK_NAME} || true
 
                     docker run --rm \
                         --network host \
