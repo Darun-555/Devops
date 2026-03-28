@@ -188,7 +188,7 @@ pipeline {
                     fi
 
                     docker run --rm \
-                        --user 0:0 \
+                        --user "$(id -u):$(id -g)" \
                         --network ${ZAP_NETWORK} \
                         -v "${ZAP_REPORT_DIR}:/zap/wrk:rw" \
                         ghcr.io/zaproxy/zaproxy:stable \
