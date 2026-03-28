@@ -166,6 +166,7 @@ pipeline {
                     kubectl config use-context "${K8S_CONTEXT}"
                     mkdir -p "${ZAP_REPORT_DIR}"
                     chmod 0777 "${ZAP_REPORT_DIR}" || true
+                    ZAP_TARGET_URL="http://127.0.0.1:${PORT_FORWARD_PORT}/health"
 
                     kubectl port-forward --address 127.0.0.1 \
                         service/${K8S_SERVICE_NAME} \
@@ -193,16 +194,36 @@ pipeline {
                         -v "${ZAP_REPORT_DIR}:/zap/wrk:rw" \
                         ghcr.io/zaproxy/zaproxy:stable \
                         zap-baseline.py \
-                        -t http://127.0.0.1:${PORT_FORWARD_PORT} \
+                        -t "${ZAP_TARGET_URL}" \
                         -r zap_report.html \
                         -J zap_report.json \
                         -I
 
                     chmod -R 0777 "${ZAP_REPORT_DIR}" || true
                     mkdir -p "${WORKSPACE}/zap-publish"
-                    cp -f "${ZAP_REPORT_DIR}/zap_report.html" "${WORKSPACE}/zap-publish/index.html"
-                    cp -f "${ZAP_REPORT_DIR}/zap_report.json" "${WORKSPACE}/zap-publish/zap_report.json"
-                    chmod 0644 "${WORKSPACE}/zap-publish/index.html" "${WORKSPACE}/zap-publish/zap_report.json" || true
+                    ls -la "${ZAP_REPORT_DIR}" || true
+
+                    if [ -f "${ZAP_REPORT_DIR}/zap_report.html" ]; then
+                        cp -f "${ZAP_REPORT_DIR}/zap_report.html" "${WORKSPACE}/zap-publish/index.html"
+                    else
+                        cat > "${WORKSPACE}/zap-publish/index.html" <<EOF
+<html>
+  <body>
+    <h1>OWASP ZAP Report</h1>
+    <p>ZAP completed, but zap_report.html was not generated.</p>
+    <p>Target scanned: ${ZAP_TARGET_URL}</p>
+    <p>See archived artifacts from zap-reports for raw output.</p>
+  </body>
+</html>
+EOF
+                    fi
+
+                    if [ -f "${ZAP_REPORT_DIR}/zap_report.json" ]; then
+                        cp -f "${ZAP_REPORT_DIR}/zap_report.json" "${WORKSPACE}/zap-publish/zap_report.json"
+                    fi
+
+                    chmod 0644 "${WORKSPACE}/zap-publish/index.html" || true
+                    chmod 0644 "${WORKSPACE}/zap-publish/zap_report.json" || true
                 '''
             }
             post {
