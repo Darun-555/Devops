@@ -164,7 +164,8 @@ pipeline {
                 sh '''
                     set -e
                     kubectl config use-context "${K8S_CONTEXT}"
-                    mkdir -p ${ZAP_REPORT_DIR}
+                    mkdir -p "${ZAP_REPORT_DIR}"
+                    chmod 0777 "${ZAP_REPORT_DIR}" || true
 
                     kubectl port-forward --address 127.0.0.1 \
                         service/${K8S_SERVICE_NAME} \
@@ -187,8 +188,9 @@ pipeline {
                     fi
 
                     docker run --rm \
+                        --user 0:0 \
                         --network ${ZAP_NETWORK} \
-                        -v ${ZAP_REPORT_DIR}:/zap/wrk/:rw \
+                        -v "${ZAP_REPORT_DIR}:/zap/wrk:rw" \
                         ghcr.io/zaproxy/zaproxy:stable \
                         zap-baseline.py \
                         -t http://127.0.0.1:${PORT_FORWARD_PORT} \
