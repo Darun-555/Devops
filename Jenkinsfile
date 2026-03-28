@@ -16,6 +16,8 @@ pipeline {
         HOST_PORT       = '3000'
         K8S_PORT        = '30000'
         PORT_FORWARD_PORT = '18080'
+        KUBECONFIG      = '/var/jenkins_home/.kube/config'
+        K8S_CONTEXT     = 'docker-desktop'
         K8S_NAMESPACE   = 'default'
         NAGIOS_URL      = 'http://localhost:8090'
         ZAP_REPORT_DIR  = "${WORKSPACE}/zap-reports"
@@ -65,6 +67,18 @@ pipeline {
             }
         }
 
+        stage('Kubernetes Auth Check') {
+            steps {
+                sh '''
+                    set -e
+                    test -f "${KUBECONFIG}"
+                    kubectl config use-context "${K8S_CONTEXT}"
+                    kubectl cluster-info
+                    kubectl get namespace "${K8S_NAMESPACE}"
+                '''
+            }
+        }
+
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([
@@ -73,6 +87,9 @@ pipeline {
                     string(credentialsId: 'JWT_EXPIRE', variable: 'JWT_EXPIRE')
                 ]) {
                     sh '''
+                        set -e
+                        kubectl config use-context "${K8S_CONTEXT}"
+
                         # Apply ConfigMap
                         kubectl apply -f k8s/configmap.yaml
 
@@ -105,6 +122,7 @@ pipeline {
             steps {
                 sh '''
                     set -e
+                    kubectl config use-context "${K8S_CONTEXT}"
                     echo "Waiting for Kubernetes pods to be ready..."
                     kubectl wait --for=condition=ready pod -l app=${IMAGE_NAME} -n ${K8S_NAMESPACE} --timeout=120s
 
@@ -145,6 +163,7 @@ pipeline {
             steps {
                 sh '''
                     set -e
+                    kubectl config use-context "${K8S_CONTEXT}"
                     mkdir -p ${ZAP_REPORT_DIR}
 
                     kubectl port-forward --address 127.0.0.1 \
@@ -211,16 +230,24 @@ pipeline {
         success { 
             echo 'Pipeline completed successfully!' 
             sh '''
-                kubectl get pods -n ${K8S_NAMESPACE} -l app=${IMAGE_NAME}
-                kubectl get services -n ${K8S_NAMESPACE}
+                if kubectl config use-context "${K8S_CONTEXT}" >/dev/null 2>&1; then
+                    kubectl get pods -n ${K8S_NAMESPACE} -l app=${IMAGE_NAME}
+                    kubectl get services -n ${K8S_NAMESPACE}
+                else
+                    echo "Skipping Kubernetes summary because cluster auth is unavailable."
+                fi
             '''
         }
 
         failure { 
             echo 'Pipeline failed. Check logs.'
             sh '''
-                kubectl get pods -n ${K8S_NAMESPACE} || true
-                kubectl logs deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --tail=50 || true
+                if kubectl config use-context "${K8S_CONTEXT}" >/dev/null 2>&1; then
+                    kubectl get pods -n ${K8S_NAMESPACE} || true
+                    kubectl logs deployment/${IMAGE_NAME} -n ${K8S_NAMESPACE} --tail=50 || true
+                else
+                    echo "Skipping Kubernetes diagnostics because cluster auth is unavailable."
+                fi
             '''
         }
     }
