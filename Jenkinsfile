@@ -199,18 +199,25 @@ pipeline {
                         -I
 
                     chmod -R 0777 "${ZAP_REPORT_DIR}" || true
+                    mkdir -p "${WORKSPACE}/zap-publish"
+                    cp -f "${ZAP_REPORT_DIR}/zap_report.html" "${WORKSPACE}/zap-publish/index.html"
+                    cp -f "${ZAP_REPORT_DIR}/zap_report.json" "${WORKSPACE}/zap-publish/zap_report.json"
+                    chmod 0644 "${WORKSPACE}/zap-publish/index.html" "${WORKSPACE}/zap-publish/zap_report.json" || true
                 '''
             }
             post {
                 always {
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'zap-reports',
-                        reportFiles: 'zap_report.html',
-                        reportName: 'OWASP ZAP Security Report'
-                    ])
+                    archiveArtifacts artifacts: 'zap-reports/**', allowEmptyArchive: true
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        publishHTML(target: [
+                            allowMissing: true,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: 'zap-publish',
+                            reportFiles: 'index.html',
+                            reportName: 'OWASP ZAP Security Report'
+                        ])
+                    }
                 }
             }
         }
