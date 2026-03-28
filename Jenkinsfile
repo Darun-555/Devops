@@ -216,7 +216,7 @@ pipeline {
             steps {
                 sh '''
                     echo "Checking Nagios is reachable at ${NAGIOS_URL}..."
-                    if curl -sf --max-time 10 ${NAGIOS_URL}/nagios/ > /dev/null; then
+                    if curl -sf --max-time 10 ${NAGIOS_URL}/nagiosxi/ > /dev/null; then
                         echo "Nagios is UP and reachable at ${NAGIOS_URL}"
                     else
                         echo "WARNING: Nagios is NOT reachable at ${NAGIOS_URL}. Start your Nagios Docker container."
