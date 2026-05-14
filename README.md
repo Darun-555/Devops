@@ -1,4 +1,4 @@
-# Devops Backend
+# Hospital APP
 
 Single Express + Mongoose backend for patient registration, wards, admissions, vitals, medication, and doctor notes.
 
